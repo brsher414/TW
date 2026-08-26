@@ -1,0 +1,2 @@
+[console_scripts]
+etl_test = TRENDING_WORDS.etl_test:main

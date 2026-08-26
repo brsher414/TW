@@ -1,0 +1,74 @@
+[category]
+code = "YD"
+name = "酸奶/酸味奶"
+
+[source]
+bundle = "YD"
+product_file = "products_sampled.parquet"
+taxonomy_file = "YD_SEGMENT_LABEL.xlsx"
+
+[period]
+base_quarter = "2025Q1"
+current_quarter = "2026Q1"
+start_period = "20251401"
+end_period = "20261406"
+
+[trend]
+min_ngram = 2
+max_ngram = 5
+max_desc_chars = 120
+min_freq = 800
+min_base_count = 200
+min_context_diversity = 30
+min_cohesion = 1.0
+growth_rate_threshold = 0.4
+
+[etl]
+service = "03"
+max_workers = 6
+parallel_hint = 4
+sample_ratio = 0.80
+query_timeout_ms_debug = 60000
+
+[pipeline]
+desc_col = "PROD_DESC_RAW"
+period_col = "PERIODCODE"
+candidate_chunk_rows = 200000
+candidate_workers = 4
+context_chunk_rows = 1000000
+context_workers = 6
+reduce_batch_files = 6
+boundary_char = " "
+top_n_display = 50
+enable_cohesion_filter = true
+force_rebuild_cache = true
+force_rebuild_context = true
+
+[cluster]
+embedding_model = "BAAI/bge-m3"
+include_low_cohesion = true
+device = "cpu"
+use_fp16 = false
+batch_size = 8
+max_length = 64
+embedding_dimensions = 1024
+cache_save_every_batches = 10
+force_rebuild_embeddings = false
+embedding_text_template = "品类：{category}；商品描述热词：{term}"
+umap_cluster_components = 10
+umap_n_neighbors = 15
+umap_min_dist_cluster = 0.0
+umap_metric = "cosine"
+umap_min_dist_vis = 0.1
+random_state = 42
+hdbscan_min_cluster_size = 5
+hdbscan_min_samples = 3
+hdbscan_metric = "euclidean"
+hdbscan_cluster_selection_method = "eom"
+top_terms_per_cluster = 15
+
+[taxonomy]
+excluded_dimension_codes = ["CATEGORY", "BRAND", "SUBBRAND"]
+
+[dashboard]
+default_sort = "growth_rate"

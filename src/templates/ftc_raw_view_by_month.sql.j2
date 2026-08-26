@@ -1,0 +1,45 @@
+CREATE
+OR REPLACE VIEW {{ "ftc_v_raw_" ~ suffix ~ "_" ~ period }} AS WITH cat_filt AS (
+    /*目前为目标category的itemid - category修复表中非目标category的itemid*/
+    SELECT
+        cat.itemid,
+        catcode original_cat_code
+    FROM
+        coded_trans_catcode cat
+    WHERE
+        cat.bundle = '{{ catcode }}'
+        AND periodcode = {{ period_code }}
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                {{ category_fix_table }}
+                f
+            WHERE
+                f.itemid = cat.itemid
+        )
+    UNION ALL
+        /*category修复表中目标category的itemid*/
+    SELECT
+        f.itemid,
+        f.catcode_bau original_cat_code
+    FROM
+        {{ category_fix_table }}
+        f
+    WHERE
+        f.catcode_new = '{{ catcode }}'
+        AND periodcode = {{ period_code }}
+)
+SELECT
+    '{{ catcode }}' catcode,
+    A.itemid,
+    A.brand,
+    A.type,
+    A.prod_desc_raw,
+    A.attribute,
+    A.price,
+    cat.original_cat_code
+FROM
+    cat_filt cat
+    JOIN new_item A
+    ON A.itemid = cat.itemid

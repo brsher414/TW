@@ -1,0 +1,57 @@
+/*
+`omni_db_cate_segment` & `cip_attrno_rf_ogrds_map` setup
+*fill字段需要填充, 否则后续会报错
+*/
+select
+	:catcode catcode
+	, decode(c.nc_charid, '117249', '20', '117377', '2146', '117323', '2126', '117379', '300', c.nc_charid) segno
+	, decode(c.f_cht_short_desc, '117249', 'CATEGORY', '117377', 'MANUFACTURER', '117323', 'BRAND', '117379', 'SUBBRAND', c.f_cht_short_desc) segcode
+	, decode(c.nc_charid, '117249', '品类', '117377', '厂商', '117323', '品牌', '117379', '子品牌', '') segdesc /*后续补充*/
+	, row_number() over(partition by 1 order by nc_charid) seqence
+	, 'OMNI' omni
+	, '' cnn
+	, '' fill
+	, '[''SEGNAME'']' keyword_col_names
+	, '[]' combine_col_names
+	, '' if_split
+from
+	zhaoti01.mv_chars@adch03pr c
+where
+	nc_charid in (
+		/*根据需求替换*/
+        {%for charid in charid_arr%}
+        {{'charid'}}{%if not loop.last%},{%endif%}
+        {%endfor%}
+	)
+
+
+with cat_name as (
+	select
+		ac_charvaluetag cc
+	from
+		zhaoti01.mv_charvals@adch03pr
+	where
+		nc_charid = 117249
+		and f_cvt_short_desc = :catcode
+)
+select
+	:catcode catcode
+	, decode(c.nc_charid, '117249', '20', '117377', '2146', '117323', '2126', '117379', '300', c.nc_charid) segno
+	, decode(c.f_cht_short_desc, '117249', 'CATEGORY', '117377', 'MANUFACTURER', '117323', 'BRAND', '117379', 'SUBBRAND', c.f_cht_short_desc) segcode
+	, decode(c.nc_charid, '117249', '品类', '117377', '厂商', '117323', '品牌', '117379', '子品牌', '') segdesc
+	, row_number() over(partition by 1 order by nc_charid) seqence
+	, 'Y' leverage
+	, c.f_cht_short_desc ogrds_no
+	, cat_name.cc cip_category
+	, c.nc_charid
+from
+	zhaoti01.mv_chars@adch03pr c
+join cat_name on
+	1 = 1
+where
+	nc_charid in (
+		/*根据需求替换*/
+        {%for charid in charid_arr%}
+        {{'charid'}}{%if not loop.last%},{%endif%}
+        {%endfor%}
+	)

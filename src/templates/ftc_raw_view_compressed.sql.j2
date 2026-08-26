@@ -1,0 +1,54 @@
+CREATE
+OR REPLACE VIEW {{ "ftc_v_raw_" ~ suffix ~ "_" ~ target_period }} AS WITH cat_filt AS (
+    /*未出现在category fix table中的itemid*/
+    SELECT
+        cat.itemid,
+        catcode original_cat_code
+    FROM
+        coded_trans_catcode cat
+    WHERE
+        cat.bundle = '{{ catcode }}'
+        AND periodcode BETWEEN {{ period_start }}
+        AND {{ period_end }}
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                {{ category_fix_table }}
+                f
+            WHERE
+                f.itemid = cat.itemid
+        )
+    UNION ALL
+    /*category fix table中为目标category的itemid*/
+    SELECT
+        f.itemid,
+        f.catcode_bau original_cat_code
+    FROM
+        {{ category_fix_table }}
+        f
+    WHERE
+        f.catcode_new = '{{ catcode }}'
+        AND periodcode BETWEEN {{ period_start }}
+        AND {{ period_end }}
+)
+SELECT
+    '{{ catcode }}' catcode,
+    {{ target_periodcode }} || SUBSTR(
+        cat.itemid,
+        9
+    ) || SUBSTR(
+        cat.itemid,
+        1,
+        8
+    ) itemid,
+    A.brand,
+    A.type,
+    A.prod_desc_raw,
+    A.attribute,
+    A.price,
+    cat.original_cat_code
+FROM
+    cat_filt cat
+    JOIN new_item A
+    ON A.itemid = cat.itemid

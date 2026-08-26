@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: coding-team-prod
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: lxml>=6.0.2
+Requires-Dist: networkx>=3.6.1
+Requires-Dist: openpyxl>=3.1.5
+Requires-Dist: oracledb>=3.4.1
+Requires-Dist: plotly>=6.7.0
+Requires-Dist: polars>=1.30.0
+Requires-Dist: python-calamine>=0.6.1
+Requires-Dist: pyvis>=0.3.2
+Requires-Dist: sqlparse>=0.5.5
+Requires-Dist: streamlit>=1.53.1

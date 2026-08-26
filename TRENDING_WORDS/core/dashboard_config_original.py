@@ -1,0 +1,63 @@
+"""Central configuration for the TRENDING_WORDS presentation dashboard."""
+from __future__ import annotations
+
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+STAGING_DIR = DATA_DIR / "staging"
+DASHBOARD_CACHE_DIR = DATA_DIR / "dashboard_cache"
+
+TERM_PERIOD_DOCFREQ = DASHBOARD_CACHE_DIR / "term_period_docfreq.parquet"
+CLUSTER_PERIOD_NGRAM_SUM = DASHBOARD_CACHE_DIR / "cluster_period_ngram_sum.parquet"
+CLUSTER_PERIOD_PRODUCT_COVERAGE = (
+    DASHBOARD_CACHE_DIR / "cluster_period_product_coverage.parquet"
+)
+PERIOD_CACHE_SUMMARY = DASHBOARD_CACHE_DIR / "period_cache_summary.json"
+PERIOD_VALIDATION_DETAIL = DASHBOARD_CACHE_DIR / "period_validation_detail.parquet"
+
+DEFAULT_CLUSTER_TOP_N = 10
+DEFAULT_TERM_TOP_N = 10
+MAX_CLUSTER_LINES = 64
+
+SCOPE_OPTIONS = {
+    "当前完整结果": "full",
+    "展示至 04 内部解释": "internal",
+    "仅展示 LLM 前数据": "raw",
+}
+
+EXCLUSION_LABELS = {
+    "MIXED_OR_INVALID_CLUSTER": "Cluster 主题混杂或无效",
+    "LABEL_EVIDENCE_WITHHELD": "需先确认现有标签覆盖",
+    "KNOWN_PACKSIZE_ATTRIBUTE": "已知现有属性，不作为新属性研究",
+    "EXISTING_LABEL_TREND_DISABLED": "已有标签趋势研究未开启",
+    "EXISTING_ATTRIBUTE_LABEL_UNKNOWN": "标签新旧状态无法确认",
+    "NO_RESEARCHABLE_MAPPING": "未形成可研究机会",
+}
+
+EXCLUSION_DETAILS = {
+    "MIXED_OR_INVALID_CLUSTER": (
+        "04 判断该 Cluster 同时包含多个无关业务主题或噪声，"
+        "无法形成可靠的单一外部研究主题。"
+    ),
+    "LABEL_EVIDENCE_WITHHELD": (
+        "该方向已匹配到现有属性，但当前 Taxonomy Retrieval 未提供该属性下的"
+        "标签明细，无法判断它是已有标签还是候选新标签。为避免重复推荐，"
+        "暂不进入 05 外部研究。"
+    ),
+    "KNOWN_PACKSIZE_ATTRIBUTE": (
+        "规格或包装规格已属于 PACKSIZE 现有属性。当前缺少标签层证据，"
+        "不应再次包装为新属性，因此暂不进入外部研究。"
+    ),
+    "EXISTING_LABEL_TREND_DISABLED": (
+        "04 已确认该主题属于现有标签，不是新标签或新属性机会。"
+        "当前未启用已有标签趋势研究，所以 05 不执行该主题。"
+    ),
+    "EXISTING_ATTRIBUTE_LABEL_UNKNOWN": (
+        "04 已识别出对应的现有属性，但既没有确认匹配到已有标签，"
+        "也没有形成可靠的新标签建议。该方向需要先进行 Taxonomy Review。"
+    ),
+    "NO_RESEARCHABLE_MAPPING": (
+        "04 没有形成可独立研究的新标签、新属性，或允许研究的已有标签趋势。"
+    ),
+}

@@ -1,0 +1,20 @@
+/*恢复正常的ITEMID和PERIOD*/
+MERGE /*+ PARALLEL(10) */
+INTO
+	{{coded_table}} t
+		USING (
+		SELECT
+			ROWID rid
+			, SUBSTR(ITEMID, -8, 8) AS last8
+			, SUBSTR(ITEMID, 9, LENGTH(ITEMID) - 16) AS middle
+		FROM
+			{{coded_table}} w
+	) s ON
+	(
+		t.ROWID = s.rid
+	)
+	WHEN MATCHED THEN
+UPDATE
+SET
+	t.PERIODCODE = s.last8
+	, t.ITEMID = s.last8 || s.middle

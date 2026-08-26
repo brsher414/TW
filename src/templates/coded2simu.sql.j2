@@ -1,0 +1,137 @@
+{% macro seg_columns(segments) %}
+    {%- for seg in segments -%}
+        "{{ seg[1][:10] }}_{{ seg[0] }}_BAU",
+        "{{ seg[1][:10] }}_{{ seg[0] }}_NEW" {%- if not loop.last %},
+        {% endif -%}
+    {%- endfor -%}
+{% endmacro %}
+
+{% macro seg_ctes(
+        segments,
+        segconf_table,
+        category
+    ) %}
+    {%- for seg in segments -%}
+        seg_ {{ seg [0] }} AS (
+            SELECT
+                segcode,
+                esegment || '(' || csegment || ')' AS sname
+            FROM
+                {{ segconf_table }}
+            WHERE
+                catcode = :category
+                AND segno = {{ seg [0] }}
+            GROUP BY
+                segcode,
+                csegment,
+                esegment
+        ) {% if not loop.last %},
+        {% endif %}
+    {%- endfor -%}
+{% endmacro %}
+INSERT INTO
+    {{ target_table }}
+    (
+        itemid,
+        catcode,
+        periodcode,
+        website,
+        web_link,
+        prod_id,
+        store_id,
+        raw_brand,
+        prod_desc_raw,
+        ATTRIBUTE,
+        manu,
+        {{ seg_columns(segments) }},
+        sales_value_after_discount
+    ) WITH {{ seg_ctes(
+        segments,
+        segconf_table,
+        category
+    ) }},
+    rcf AS (
+        SELECT
+            itemid,
+            storecode,
+            periodcode
+        FROM
+            {{ simu_item_table }}
+            cat
+        WHERE
+            cat.attrno = '20'
+            AND cat.attrvalue = :category
+            AND cat.periodcode = :periodcode
+    ),
+    rsj AS (
+        SELECT
+            r.itemid,
+            r.storecode,
+            r.periodcode,
+            {% for seg in segments %}
+                {{ 'seg_' ~ seg [0] }}.sname AS {{ seg [1] [:10] ~ '_' ~ seg [0] }}
+
+                {% if not loop.last %},
+                {% endif %}
+            {% endfor %},
+            bra_2126.attrvalue AS attrv_2126
+        FROM
+            rcf r
+
+            {% for seg in segments %}
+            JOIN {{ simu_item_table }}
+            {{ seg [1] [:3] ~ '_' ~ seg [0] }}
+            ON {{ seg [1] [:3] ~ '_' ~ seg [0] }}.itemid = r.itemid
+            JOIN {{ 'seg_' ~ seg [0] }}
+            ON {{ 'seg_' ~ seg [0] }}.segcode = {{ seg [1] [:3] ~ '_' ~ seg [0] }}.attrvalue
+        {% endfor %}
+        WHERE
+            {% for seg in segments %}
+                {{ seg [1] [:3] ~ '_' ~ seg [0] }}.attrno = {{ seg [0] }}
+
+                {% if not loop.last %}
+                    AND
+                {% endif %}
+            {% endfor %}
+    ) catcode,
+    rsj.periodcode,
+    e.website,
+    get_web_link(
+        e.website,
+        ni.prod_id
+    ) web_link,
+    ni.prod_id,
+    ni.store_id,
+    ni.brand raw_brand,
+    ni.prod_desc_raw,
+    ni.attribute,
+    NVL(
+        cmb.ecmanu,
+        'o.manu'
+    ) || '(' || NVL(
+        cmb.eccmanu,
+        '其他厂商'
+    ) || ')' AS "manu",
+    {{ seg_columns(segments) }},
+    NVL(
+        cts.promo_sales,
+        cts.adjsales
+    ) sales_value_after_discount
+FROM
+    rsj
+    LEFT JOIN bsj
+    ON bsj.itemid = rsj.itemid
+    JOIN { SELF.new_item_table } ni
+    ON ni.itemid = rsj.itemid
+    LEFT JOIN db_cate_manu_brand cmb
+    ON cmb.catcode = '{ get_session("category") }'
+    AND cmb.ecbrandcode = rsj.attrv_2126
+    JOIN { SELF.sales_table } cts
+    ON cts.itemid = rsj.itemid
+    JOIN db_universe_retailer e
+    ON e.storecode = rsj.storecode
+    JOIN db_market_retail d
+    ON d.store = e.storename
+WHERE
+    d.mktid = '线上总和/CN'
+    AND e.dup_storeid IS NULL

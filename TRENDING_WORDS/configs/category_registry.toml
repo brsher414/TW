@@ -1,0 +1,19 @@
+[defaults]
+active_category = "YD"
+
+[categories]
+
+[categories.YD]
+name = "酸奶/酸味奶"
+config = "configs/YD.toml"
+enabled = true
+
+[categories.BEER]
+name = "啤酒"
+config = "configs/BEER.toml"
+enabled = true
+
+[categories.CHEESE]
+name = "奶酪/芝士/干酪/吉士"
+config = "configs/CHEESE.toml"
+enabled = true

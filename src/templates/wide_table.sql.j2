@@ -1,0 +1,126 @@
+/* 宽表 by category */
+WITH {% for seg in segments %}
+    {{ "seg_" ~ seg.segno }} AS (
+        SELECT
+            segcode,
+            CONCAT(
+                esegment,
+                '(',
+                csegment,
+                ')'
+            ) AS sname
+        FROM
+            omni_db_dic_segment
+        WHERE
+            catcode = :catcode
+            AND segno = {{ seg.segno }}
+        GROUP BY
+            segcode,
+            csegment,
+            esegment
+    ) {% if not loop.last %},
+    {% endif %}
+{% endfor %},
+prod_id_filter AS (
+    SELECT
+        itemid
+    FROM
+        new_item
+    WHERE
+        prod_id = :prod_id
+),
+cf AS (
+    SELECT
+        itemid,
+        storecode,
+        periodcode
+    FROM
+        coded_trans_item cat
+    WHERE
+        cat.attrno = '20'
+        AND cat.attrvalue = :catcode
+        AND cat.periodcode = :periodcode
+        AND EXISTS (
+            SELECT
+                1
+            FROM
+                prod_id_filter p
+            WHERE
+                p.itemid = cat.itemid
+        )
+),
+sj AS (
+    SELECT
+        r.itemid,
+        r.storecode,
+        r.periodcode,
+        {% for seg in segments %}
+            {{ "seg_" ~ seg.segno }}.sname AS {{ seg.alias }}
+
+            {% if not loop.last %},
+            {% endif %}
+        {% endfor %},
+        bra_2126.attrvalue AS attrv_2126
+    FROM
+        cf r
+
+        {% for seg in segments %}
+        JOIN coded_trans_item {{ seg.short }}
+        ON {{ seg.short }}.itemid = r.itemid
+        AND {{ seg.short }}.attrno = {{ seg.segno }}
+        JOIN {{ "seg_" ~ seg.segno }}
+        ON {{ "seg_" ~ seg.segno }}.segcode = {{ seg.short }}.attrvalue
+    {% endfor %}
+)
+SELECT
+    sj.itemid,
+    :catcode AS catcode,
+    sj.periodcode,
+    e.website,
+    get_web_link(
+        e.website,
+        ni.prod_id
+    ) AS web_link,
+    ni.prod_id,
+    ni.store_id,
+    ni.brand AS raw_brand,
+    ni.prod_desc_raw,
+    ni.attribute,
+    seg_2126.sname AS "2126_BRAND",
+    {% if has_subbrand %}
+        seg_300.sname AS "SUBBRAND",
+    {% endif %}
+
+    COALESCE(
+        cmb.ecmanu,
+        'o.manu'
+    ) || '(' || COALESCE(
+        cmb.eccmanu,
+        '其他厂商'
+    ) || ')' AS "manu",
+    {% for seg in segments if seg.segno not in ['2126','300','1526'] %}
+        sj.{{ seg.alias }}
+
+        {% if not loop.last %},
+        {% endif %}
+    {% endfor %},
+    COALESCE(
+        cts.promo_sales,
+        cts.adjsales
+    ) AS sales_value_after_discount
+FROM
+    sj
+    JOIN new_item ni
+    ON ni.itemid = sj.itemid
+    LEFT JOIN db_cate_manu_brand cmb
+    ON cmb.catcode = :catcode
+    AND cmb.ecbrandcode = sj.attrv_2126
+    JOIN coded_trans_sales cts
+    ON cts.itemid = sj.itemid
+    JOIN db_universe_retailer e
+    ON e.storecode = sj.storecode
+    JOIN db_market_retail d
+    ON d.store = e.storename
+WHERE
+    d.mktid = '线上总和/CN'
+    AND e.dup_storeid IS NULL
